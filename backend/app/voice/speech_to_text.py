@@ -7,29 +7,31 @@ from faster_whisper import WhisperModel
 
 
 SAMPLE_RATE = 16000
-MODEL_SIZE = "base"
 
-_model = None
+_models = {}
 
 
-def get_model():
-    global _model
+def get_model(model_size: str = "base"):
+    if model_size not in _models:
+        print(f"Loading Whisper '{model_size}' model...")
 
-    if _model is None:
-        print("Loading Whisper model...")
-
-        _model = WhisperModel(
-            MODEL_SIZE,
+        _models[model_size] = WhisperModel(
+            model_size,
             device="cpu",
             compute_type="int8"
         )
 
-    return _model
+    return _models[model_size]
 
 
-def listen(duration: int = 6) -> str:
+def listen(
+    duration: float = 6,
+    model_size: str = "base",
+    announce: bool = True
+) -> str:
 
-    print(f"\n🎙 Listening for {duration} seconds...")
+    if announce:
+        print(f"\n🎙 Listening for {duration} seconds...")
 
     audio = sd.rec(
         int(duration * SAMPLE_RATE),
@@ -40,8 +42,9 @@ def listen(duration: int = 6) -> str:
 
     sd.wait()
 
-    print("✓ Recording complete.")
-    print("🧠 Transcribing...")
+    if announce:
+        print("✓ Recording complete.")
+        print("🧠 Transcribing...")
 
     temp_file = tempfile.NamedTemporaryFile(
         suffix=".wav",
@@ -58,13 +61,13 @@ def listen(duration: int = 6) -> str:
     )
 
     try:
-
-        model = get_model()
+        model = get_model(model_size)
 
         segments, _ = model.transcribe(
             temp_path,
-            beam_size=5,
-            vad_filter=True
+            beam_size=3,
+            vad_filter=True,
+            condition_on_previous_text=False
         )
 
         text = " ".join(
@@ -75,6 +78,5 @@ def listen(duration: int = 6) -> str:
         return text.strip()
 
     finally:
-
         if os.path.exists(temp_path):
             os.remove(temp_path)
