@@ -3,6 +3,8 @@ import math
 import cv2
 import mediapipe as mp
 
+from app.vision.gesture_actions import GestureController
+
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
@@ -71,6 +73,8 @@ def main():
 
     camera = cv2.VideoCapture(0)
 
+    controller = GestureController()
+
     if not camera.isOpened():
         print("Could not access webcam.")
         return
@@ -82,6 +86,7 @@ def main():
     ) as hands:
 
         print("Gesture system online.")
+        print("Pinch and move your hand up/down to control volume.")
         print("Press Q to quit.")
 
         while True:
@@ -107,6 +112,7 @@ def main():
             )
 
             gesture = "NO HAND"
+            action = ""
 
             if results.multi_hand_landmarks:
 
@@ -122,12 +128,32 @@ def main():
                     hand.landmark
                 )
 
+                action = controller.process(
+                    gesture,
+                    hand.landmark
+                )
+
+            else:
+                controller.reset()
+
+            # Display gesture
             cv2.putText(
                 frame,
                 f"Gesture: {gesture}",
                 (30, 50),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
+                (255, 255, 255),
+                2
+            )
+
+            # Display action
+            cv2.putText(
+                frame,
+                f"Action: {action}",
+                (30, 90),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
                 (255, 255, 255),
                 2
             )
@@ -148,3 +174,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
